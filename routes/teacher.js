@@ -20,7 +20,14 @@ function requireAuth(req, res, next) {
 
 // ── Helper: generate random 4-digit password ──
 function generatePassword() {
-  return String(Math.floor(1000 + Math.random() * 9000));
+  const used = new Set(
+    db.all("SELECT password FROM courses WHERE status = 'active'").map(c => c.password)
+  );
+  let pwd;
+  do {
+    pwd = String(Math.floor(1000 + Math.random() * 9000));
+  } while (used.has(pwd));
+  return pwd;
 }
 
 // ── Page: Login ──
