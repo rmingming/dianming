@@ -1,0 +1,795 @@
+<%- include('../partial/header', { title: course.name }) %>
+<header class="topbar">
+  <a href="/teacher/dashboard" class="topbar-back">← 课程列表</a>
+  <span class="topbar-title"><%= course.name %></span>
+  <span class="topbar-user">👤 <%= session.teacherName %></span>
+</header>
+
+<main class="main-container">
+  <!-- Course Info Bar -->
+  <div class="info-bar">
+    <div class="info-item">
+      <span class="info-label">状态</span>
+      <span class="badge <%= course.status === 'active' ? 'badge-active' : 'badge-ended' %>">
+        <%= course.status === 'active' ? '进行中' : '已结束' %>
+      </span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">签到口令</span>
+      <span class="info-password" id="passwordDisplay"><%= course.password %></span>
+      <% if (course.status === 'active') { %>
+        <button class="btn btn-sm" onclick="regeneratePassword()" title="重新生成口令">🔄</button>
+      <% } %>
+    </div>
+    <div class="info-item">
+      <span class="info-label">座位范围</span>
+      <span><%= course.max_row %>排 × <%= course.max_col %>列</span>
+    </div>
+    <div class="info-actions">
+      <% if (course.status === 'active') { %>
+        <button class="btn" onclick="showQR()" title="展示签到二维码">📱 二维码</button>
+        <button class="btn btn-warn" onclick="endCourse()">⏹ 结束签到</button>
+        <button class="btn btn-sm" onclick="regeneratePassword()">🔄 新口令</button>
+      <% } else { %>
+        <button class="btn btn-primary" onclick="startCourse()">▶ 重新开始</button>
+      <% } %>
+      <a href="/teacher/course/<%= course.id %>/settings" class="btn btn-sm">⚙️ 设置</a>
+	      <button class="btn btn-sm btn-danger" onclick="deleteCourse()" title="删除课程">🗑 删除</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-number" id="checkedCount"><%= checkins.length %></div>
+      <div class="stat-label">已签到</div>
+    </div>
+    <% if (totalStudents > 0) { %>
+    <div class="stat-card">
+      <div class="stat-number"><%= totalStudents %></div>
+      <div class="stat-label">应到人数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="absentCount"><%= totalStudents > 0 ? totalStudents - checkins.length : 0 %></div>
+      <div class="stat-label">未签到</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="rateCount"><%= totalStudents > 0 ? Math.round(checkins.length / totalStudents * 100) : 0 %>%</div>
+      <div class="stat-label">签到率</div>
+    </div>
+    <% } %>
+    <div class="stat-card stat-warn" id="conflictCard" style="<%= conflictSeats.length > 0 ? '' : 'display:none' %>">
+      <div class="stat-number" id="conflictCount"><%= conflictSeats.length %></div>
+      <div class="stat-label">⚠ 座位冲突</div>
+    </div>
+  </div>
+
+  <!-- View toggle -->
+  <div class="view-toggle">
+    <button class="btn active" id="btnGridView" onclick="switchView('grid')">🗺 网格视图</button>
+    <button class="btn btn-pick" id="btnPick" onclick="togglePick()">🎲 随机点名</button>
+    <button class="btn" id="btnListView" onclick="switchView('list')">📋 列表视图</button>
+    <a href="/teacher/course/<%= course.id %>/export" class="btn btn-sm">📥 导出CSV</a>
+  </div>
+
+  <!-- ===== GRID VIEW ===== -->
+  <div id="gridView" class="card">
+    <div class="grid-legend">
+      <span class="legend-item"><span class="seat seat-taken"></span> 已签到</span>
+      <span class="legend-item"><span class="seat seat-conflict"></span> 冲突</span>
+      <span class="legend-item"><span class="seat seat-empty"></span> 空位</span>
+      <span class="legend-item"><span class="seat" style="background:#fde68a;border-color:#f59e0b;"></span> 点名中</span>
+      <span class="legend-item"><span class="seat" style="background:#fef3c7;border:3px solid #f59e0b;"></span> 已点中</span>
+    </div>
+    <div class="seat-grid-wrapper">
+      <table class="seat-grid" id="seatGrid">
+        <thead>
+          <tr>
+            <th class="corner"></th>
+            <% for (let c = 1; c <= course.max_col; c++) { %>
+              <th>列<%= c %></th>
+            <% } %>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (let r = course.max_row; r >= 1; r--) { %>
+          <tr>
+            <th>排<%= r %></th>
+            <% for (let c = 1; c <= course.max_col; c++) {
+              const seatCheckins = checkins.filter(ci => ci.row === r && ci.col === c);
+              let cls = 'seat-empty';
+              let title = `${r}排${c}列 - 空位`;
+              let content = '';
+              if (seatCheckins.length >= 2) {
+                cls = 'seat-conflict';
+                title = `${r}排${c}列 - 冲突! ${seatCheckins.map(s => s.name).join(', ')}`;
+                content = seatCheckins.map(s => s.name).join('/');
+              } else if (seatCheckins.length === 1) {
+                cls = 'seat-taken';
+                title = `${r}排${c}列 - ${seatCheckins[0].student_id} ${seatCheckins[0].name}`;
+                content = seatCheckins[0].name;
+              }
+            %>
+              <td class="<%= cls %>" title="<%= title %>" data-row="<%= r %>" data-col="<%= c %>">
+                <%= content %>
+              </td>
+            <% } %>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% if (conflictSeats.length > 0) { %>
+      <div class="conflict-alert">
+        ⚠️ 检测到 <strong><%= conflictSeats.length %></strong> 个座位冲突：
+        <% conflictSeats.forEach(cs => { %>
+          <%= cs.row %>排<%= cs.col %>列
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- QR Code Modal -->
+  <div id="qrModal" class="qr-overlay" style="display:none;" onclick="hideQR(event)">
+    <div class="qr-modal" onclick="event.stopPropagation()">
+      <h2>📱 扫码签到</h2>
+      <p style="color:var(--color-text-secondary);margin-bottom:12px;">
+        课程：<%= course.name %><br>口令：<strong id="qrPassword"><%= course.password %></strong>
+      </p>
+      <img id="qrImage" src="" alt="签到二维码" style="display:block;max-width:280px;margin:0 auto;">
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-top:12px;">
+        学生扫描二维码可直接进入签到页面，无需手动输入口令
+      </p>
+      <button class="btn" onclick="document.getElementById('qrModal').style.display='none'" style="margin-top:8px;">关闭</button>
+    </div>
+  </div>
+
+  <!-- ===== LIST VIEW ===== -->
+  <div id="listView" class="card" style="display:none;">
+    <table class="checkin-table" id="checkinTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>学号</th>
+          <th>姓名</th>
+          <th>排</th>
+          <th>列</th>
+          <th>签到时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="checkinTbody">
+        <% checkins.forEach((c, i) => {
+          const isConflict = conflictSeats.some(cs => cs.row === c.row && cs.col === c.col);
+        %>
+        <tr class="<%= isConflict ? 'row-conflict' : '' %>" id="row-<%= c.id %>">
+          <td><%= i + 1 %></td>
+          <td><%= c.student_id %></td>
+          <td><%= c.name %></td>
+          <td><%= c.row %></td>
+          <td><%= c.col %></td>
+          <td><%= c.created_at %></td>
+          <td>
+            <button class="btn btn-sm btn-danger" onclick="resetCheckin(<%= c.id %>, '<%= c.student_id %>', '<%= c.name %>', <%= c.row %>, <%= c.col %>)">
+              重置
+            </button>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% if (checkins.length === 0) { %>
+      <div class="empty-state"><p>还没有学生签到</p></div>
+    <% } %>
+  </div>
+
+  <!-- Random Pick Overlay -->
+  <div id="pickOverlay" class="pick-overlay" style="display:none;" >
+    <div class="pick-card" id="pickCard">
+      <div class="pick-avatar" id="pickAvatar">🎲</div>
+      <div class="pick-name" id="pickName"></div>
+      <div class="pick-info" id="pickInfo"></div>
+      <div class="pick-actions" id="pickActions">
+        <button class="btn btn-primary" onclick="confirmPick()">✅ 就是TA</button>
+        <button class="btn" onclick="restartPick()">🔄 重新点名</button>
+        <button class="btn btn-sm" onclick="closePick()">✖ 关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual checkin from absent list -->
+  <% if (course.status === 'active') { %>
+    <button class="btn" onclick="showManualForm()" style="margin-top:16px">➕ 从未签到列表添加</button>
+    <div id="manualForm" class="card" style="display:none; margin-top:16px;">
+      <h3>选择未签到学生</h3>
+      <div id="absentListContainer">
+        <p class="loading-text">加载中...</p>
+      </div>
+      <div id="selectedStudent" style="display:none; margin-top:16px; padding:12px; background:#f0fdf4; border-radius:8px;">
+        <strong>已选择：</strong><span id="selectedInfo"></span>
+        <button class="btn btn-sm" onclick="clearSelection()">取消</button>
+        <form onsubmit="return manualCheckin(event)" style="margin-top:12px;">
+          <div class="form-row">
+            <div class="form-group">
+              <label>排</label>
+              <select id="manualRow" required>
+                <option value="">选择排</option>
+                <% for (let r = 1; r <= course.max_row; r++) { %>
+                  <option value="<%= r %>">第<%= r %>排</option>
+                <% } %>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>列</label>
+              <select id="manualCol" required>
+                <option value="">选择列</option>
+                <% for (let c = 1; c <= course.max_col; c++) { %>
+                  <option value="<%= c %>">第<%= c %>列</option>
+                <% } %>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">确认签到</button>
+          <button type="button" class="btn" onclick="document.getElementById('manualForm').style.display='none'">关闭</button>
+        </form>
+      </div>
+    </div>
+  <% } %>
+</main>
+
+<script>
+// ── SSE: Real-time updates ──
+const evtSource = new EventSource('/api/sse/course/<%= course.id %>');
+evtSource.addEventListener('update', function(e) {
+  const data = JSON.parse(e.data);
+  if (data.type === 'checkin') {
+    addCheckinRow(data.checkin);
+  } else if (data.type === 'reset') {
+    removeCheckinRow(data.checkinId);
+  }
+  updateGrid();
+  updateStats();
+});
+evtSource.addEventListener('connected', () => {});
+
+// ── View switching ──
+function switchView(view) {
+  document.getElementById('listView').style.display = view === 'list' ? 'block' : 'none';
+  document.getElementById('gridView').style.display = view === 'grid' ? 'block' : 'none';
+  document.getElementById('btnListView').classList.toggle('active', view === 'list');
+  document.getElementById('btnGridView').classList.toggle('active', view === 'grid');
+}
+
+// ── Reset checkin ──
+function resetCheckin(id, sid, name, row, col) {
+  if (!confirm(`确定要重置 ${sid} ${name} 的签到（${row}排${col}列）吗？\n\n重置后该学生可重新签到。`)) return;
+
+  fetch('/teacher/course/<%= course.id %>/checkins/' + id, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const rowEl = document.getElementById('row-' + id);
+        if (rowEl) rowEl.remove();
+        updateGrid();
+        updateStats();
+      }
+    });
+}
+
+// ── Add checkin row to table ──
+function addCheckinRow(c) {
+  const tbody = document.getElementById('checkinTbody');
+  const row = tbody.insertRow();
+  row.id = 'row-' + c.id;
+  const count = tbody.rows.length;
+  row.innerHTML = `
+    <td>${count}</td>
+    <td>${esc(c.student_id)}</td>
+    <td>${esc(c.name)}</td>
+    <td>${c.row}</td>
+    <td>${c.col}</td>
+    <td>${c.created_at}</td>
+    <td><button class="btn btn-sm btn-danger" onclick="resetCheckin(${c.id}, '${esc(c.student_id)}', '${esc(c.name)}', ${c.row}, ${c.col})">重置</button></td>
+  `;
+  // Re-check conflicts and highlight
+  refreshConflicts();
+}
+
+// ── Remove checkin row ──
+function removeCheckinRow(id) {
+  const row = document.getElementById('row-' + id);
+  if (row) row.remove();
+  refreshConflicts();
+}
+
+// ── Refresh conflict highlighting ──
+function refreshConflicts() {
+  const tbody = document.getElementById('checkinTbody');
+  if (!tbody) return;
+  const rows = tbody.querySelectorAll('tr');
+  const seatCount = {};
+  rows.forEach(r => {
+    const cells = r.querySelectorAll('td');
+    if (cells.length >= 6) {
+      const rowNum = cells[3].textContent;
+      const colNum = cells[4].textContent;
+      const key = rowNum + '-' + colNum;
+      seatCount[key] = (seatCount[key] || 0) + 1;
+    }
+  });
+  rows.forEach(r => {
+    const cells = r.querySelectorAll('td');
+    if (cells.length >= 6) {
+      const rowNum = cells[3].textContent;
+      const colNum = cells[4].textContent;
+      const key = rowNum + '-' + colNum;
+      r.classList.toggle('row-conflict', seatCount[key] > 1);
+    }
+  });
+}
+
+// ── Update grid ──
+function updateGrid() {
+  // Reload checkins and rebuild grid. For simplicity, reload the page.
+  // In production, we'd do this incrementally.
+  fetch('/teacher/api/course/<%= course.id %>/checkins')
+    .then(r => r.json())
+    .then(checkins => {
+      rebuildGrid(checkins);
+    });
+}
+
+function rebuildGrid(checkins) {
+  const grid = document.getElementById('seatGrid');
+  if (!grid) return;
+
+  const maxRow = <%= course.max_row %>;
+  const maxCol = <%= course.max_col %>;
+
+  // Build seat lookup
+  const seatMap = {};
+  checkins.forEach(c => {
+    const key = c.row + '-' + c.col;
+    if (!seatMap[key]) seatMap[key] = [];
+    seatMap[key].push(c);
+  });
+
+  // Update each cell
+  for (let r = 1; r <= maxRow; r++) {
+    for (let co = 1; co <= maxCol; co++) {
+      const key = r + '-' + co;
+      const cell = grid.querySelector(`td[data-row="${r}"][data-col="${co}"]`);
+      if (!cell) continue;
+      const entries = seatMap[key] || [];
+      if (entries.length >= 2) {
+        cell.className = 'seat-conflict';
+        cell.textContent = entries.map(s => s.name).join('/');
+        cell.title = `${r}排${co}列 - 冲突! ${entries.map(s => s.name).join(', ')}`;
+      } else if (entries.length === 1) {
+        cell.className = 'seat-taken';
+        cell.textContent = entries[0].name;
+        cell.title = `${r}排${co}列 - ${entries[0].student_id} ${entries[0].name}`;
+      } else {
+        cell.className = 'seat-empty';
+        cell.textContent = '';
+        cell.title = `${r}排${co}列 - 空位`;
+      }
+    }
+  }
+}
+
+function updateStats() {
+  fetch('/teacher/api/course/<%= course.id %>/checkins')
+    .then(r => r.json())
+    .then(checkins => {
+      const total = <%= totalStudents || 0 %>;
+      document.getElementById('checkedCount').textContent = checkins.length;
+
+      const absentEl = document.getElementById('absentCount');
+      if (absentEl) {
+        absentEl.textContent = Math.max(0, total - checkins.length);
+      }
+
+      const rateEl = document.getElementById('rateCount');
+      if (rateEl && total > 0) {
+        rateEl.textContent = Math.round(checkins.length / total * 100) + '%';
+      }
+
+      // Update conflict count
+      const seatMap = {};
+      checkins.forEach(c => {
+        const key = c.row + '-' + c.col;
+        seatMap[key] = (seatMap[key] || 0) + 1;
+      });
+      const conflicts = Object.values(seatMap).filter(v => v > 1).length;
+      const conflictCard = document.getElementById('conflictCard');
+      const conflictCount = document.getElementById('conflictCount');
+      if (conflictCard && conflictCount) {
+        conflictCount.textContent = conflicts;
+        conflictCard.style.display = conflicts > 0 ? '' : 'none';
+      }
+    });
+}
+
+// ── Course actions ──
+async function startCourse() {
+  const res = await fetch('/teacher/course/<%= course.id %>/start', { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('passwordDisplay').textContent = data.password;
+    alert('课程已重新开始！新口令：' + data.password);
+    location.reload();
+  }
+}
+
+async function endCourse() {
+  if (!confirm('确定要结束签到吗？结束后学生将无法签到。')) return;
+  const res = await fetch('/teacher/course/<%= course.id %>/end', { method: 'POST' });
+  const data = await res.json();
+  if (data.success) { location.reload(); }
+}
+
+async function deleteCourse() {
+  if (!confirm('确定要删除课程 "<%= course.name %>" 吗？\\n\\n此操作会同时删除该课程的所有签到记录和学生名单，且不可恢复。')) return;
+  if (!confirm('再次确认：真的要删除吗？')) return;
+  const res = await fetch('/teacher/course/<%= course.id %>/delete', { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    alert('课程已删除');
+    location.href = '/teacher/dashboard';
+  } else {
+    alert(data.error || '删除失败');
+  }
+}
+
+async function regeneratePassword() {
+  const res = await fetch('/teacher/course/<%= course.id %>/regenerate-password', { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    // Update info bar
+    document.getElementById('passwordDisplay').textContent = data.password;
+    // Update QR modal text
+    const qrPwd = document.getElementById('qrPassword');
+    if (qrPwd) qrPwd.textContent = data.password;
+    // Refresh QR image if modal is open
+    const qrImg = document.getElementById('qrImage');
+    if (qrImg && qrImg.src) {
+      qrImg.src = '/teacher/course/<%= course.id %>/qrcode?' + Date.now();
+    }
+  }
+}
+
+let selectedManualStudent = null;
+
+async function showManualForm() {
+  const form = document.getElementById('manualForm');
+  form.style.display = 'block';
+  document.getElementById('selectedStudent').style.display = 'none';
+  selectedManualStudent = null;
+
+  // Fetch absent students
+  const container = document.getElementById('absentListContainer');
+  container.innerHTML = '<p class="loading-text">加载中...</p>';
+
+  try {
+    const res = await fetch('/teacher/course/<%= course.id %>/absent');
+    const absentList = await res.json();
+
+    if (absentList.length === 0) {
+      container.innerHTML = '<p style="text-align:center;color:var(--color-text-secondary);padding:20px;">✅ 所有学生已签到完毕</p>';
+      return;
+    }
+
+    container.innerHTML = `
+      <table class="checkin-table">
+        <thead><tr><th>学号</th><th>姓名</th><th>操作</th></tr></thead>
+        <tbody>
+          ${absentList.map(s => `
+            <tr id="absent-${s.student_id}">
+              <td>${esc(s.student_id)}</td>
+              <td>${esc(s.name)}</td>
+              <td><button class="btn btn-sm btn-primary" onclick="selectStudent('${esc(s.student_id)}', '${esc(s.name)}')">选择</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    container.innerHTML = '<p class="alert alert-error">加载失败，请重试</p>';
+  }
+}
+
+function selectStudent(sid, name) {
+  selectedManualStudent = { studentId: sid, name };
+  document.getElementById('selectedInfo').textContent = `${sid} ${name}`;
+  document.getElementById('selectedStudent').style.display = 'block';
+  // Highlight selected row
+  document.querySelectorAll('#absentListContainer tbody tr').forEach(r => r.style.background = '');
+  const row = document.getElementById('absent-' + sid);
+  if (row) row.style.background = '#dbeafe';
+}
+
+function clearSelection() {
+  selectedManualStudent = null;
+  document.getElementById('selectedStudent').style.display = 'none';
+  document.querySelectorAll('#absentListContainer tbody tr').forEach(r => r.style.background = '');
+}
+
+async function manualCheckin(e) {
+  e.preventDefault();
+  if (!selectedManualStudent) {
+    alert('请先从列表中选择一个学生');
+    return;
+  }
+  const row = parseInt(document.getElementById('manualRow').value);
+  const col = parseInt(document.getElementById('manualCol').value);
+  if (!row || !col) {
+    alert('请填写排和列');
+    return;
+  }
+
+  const data = {
+    studentId: selectedManualStudent.studentId,
+    name: selectedManualStudent.name,
+    row, col,
+  };
+
+  const res = await fetch('/teacher/course/<%= course.id %>/checkins', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const result = await res.json();
+
+  if (result.success) {
+    // Remove student from absent list
+    const rowEl = document.getElementById('absent-' + selectedManualStudent.studentId);
+    if (rowEl) rowEl.remove();
+    // Check if all absent now gone
+    const remaining = document.querySelectorAll('#absentListContainer tbody tr');
+    if (remaining.length === 0) {
+      document.getElementById('absentListContainer').innerHTML = '<p style="text-align:center;color:var(--color-text-secondary);padding:20px;">✅ 所有学生已签到完毕</p>';
+    }
+    // Clear selection
+    clearSelection();
+    // Reset form
+    document.getElementById('manualRow').value = '';
+    document.getElementById('manualCol').value = '';
+    alert('签到成功');
+  } else {
+    alert(result.error || '添加失败');
+  }
+}
+
+// ── QR Code ──
+function showQR() {
+  const modal = document.getElementById('qrModal');
+  const img = document.getElementById('qrImage');
+  img.src = '/teacher/course/<%= course.id %>/qrcode?' + Date.now();
+  modal.style.display = 'flex';
+}
+
+function hideQR(e) {
+  if (e.target === e.currentTarget) {
+    document.getElementById('qrModal').style.display = 'none';
+  }
+}
+
+// ── Random Pick ──
+let pickState = 'idle';        // idle | running | result
+let pickTimer = null;
+let pickInterval = 50;         // current ms between switches
+let pickPhase = 0;             // 0=fast, 1=mid, 2=slow
+let pickStartTime = 0;
+let pickStudents = [];         // shuffled checked-in students
+let pickIndex = -1;
+let pickCurrent = null;        // currently highlighted student
+let pickResult = null;         // final result
+let prevCell = null;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function togglePick() {
+  if (pickState === 'idle') startPick();
+  else if (pickState === 'running') stopPick();
+}
+
+async function startPick() {
+  // Fetch current checkins
+  let checkins = [];
+  try {
+    const res = await fetch('/teacher/api/course/<%= course.id %>/checkins');
+    checkins = await res.json();
+  } catch { return; }
+
+  if (checkins.length === 0) {
+    alert('暂无已签到学生');
+    return;
+  }
+
+  pickStudents = shuffle(checkins);
+  pickIndex = -1;
+  pickInterval = 50;
+  pickPhase = 0;
+  pickResult = null;
+  pickCurrent = null;
+
+  // Switch to grid view
+  switchView('grid');
+
+  // Update button state
+  const btn = document.getElementById('btnPick');
+  btn.textContent = '⏹ 停止';
+  btn.classList.add('running');
+  pickState = 'running';
+
+  // Show overlay
+  document.getElementById('pickOverlay').style.display = 'flex';
+  document.getElementById('pickCard').classList.remove('result');
+  document.getElementById('pickAvatar').textContent = '🎲';
+  document.getElementById('pickName').textContent = '...';
+  document.getElementById('pickInfo').textContent = '随机选择中';
+  document.getElementById('pickActions').style.display = 'none';
+
+  pickStartTime = Date.now();
+  cyclePick();
+}
+
+function cyclePick() {
+  if (pickState !== 'running') return;
+
+  // Advance index
+  pickIndex = (pickIndex + 1) % pickStudents.length;
+  pickCurrent = pickStudents[pickIndex];
+
+  // Highlight grid cell
+  highlightCell(pickCurrent.row, pickCurrent.col);
+
+  // Update overlay
+  document.getElementById('pickAvatar').textContent = pickCurrent.name.charAt(0);
+  document.getElementById('pickName').textContent = pickCurrent.name;
+  document.getElementById('pickInfo').textContent = `${pickCurrent.student_id} · ${pickCurrent.row}排${pickCurrent.col}列`;
+
+  // Speed progression
+  const elapsed = Date.now() - pickStartTime;
+  if (elapsed > 3000) {
+    pickInterval = 300; pickPhase = 2;
+  } else if (elapsed > 1000) {
+    pickInterval = 150; pickPhase = 1;
+  }
+
+  // Auto-stop after ~4s
+  if (elapsed > 4000) {
+    stopPick();
+    return;
+  }
+
+  pickTimer = setTimeout(cyclePick, pickInterval);
+}
+
+function highlightCell(row, col) {
+  // Remove previous highlight
+  if (prevCell) {
+    prevCell.classList.remove('seat-picking');
+    // Restore original class
+    if (prevCell.dataset.origClass) {
+      prevCell.className = prevCell.dataset.origClass;
+    }
+  }
+
+  // Find and highlight new cell
+  const grid = document.getElementById('seatGrid');
+  if (!grid) return;
+  const cell = grid.querySelector(`td[data-row="${row}"][data-col="${col}"]`);
+  if (cell) {
+    // Save original class
+    if (!cell.dataset.origClass) {
+      cell.dataset.origClass = cell.className;
+    }
+    cell.classList.add('seat-picking');
+    prevCell = cell;
+  }
+}
+
+function stopPick() {
+  if (pickState !== 'running') return;
+
+  pickState = 'result';
+  clearTimeout(pickTimer);
+  pickResult = pickCurrent;
+
+  const btn = document.getElementById('btnPick');
+  btn.textContent = '🎲 重新点名';
+  btn.classList.remove('running');
+
+  // Update overlay to result state
+  const card = document.getElementById('pickCard');
+  card.classList.add('result');
+  document.getElementById('pickAvatar').textContent = pickResult ? pickResult.name.charAt(0) : '?';
+  document.getElementById('pickName').textContent = pickResult ? pickResult.name : '';
+  document.getElementById('pickInfo').textContent = pickResult
+    ? `${pickResult.student_id} · ${pickResult.row}排${pickResult.col}列`
+    : '';
+  document.getElementById('pickActions').style.display = 'flex';
+
+  // Change grid cell to final state
+  if (prevCell) {
+    prevCell.classList.remove('seat-picking');
+    prevCell.classList.add('seat-picked');
+  }
+}
+
+function confirmPick() {
+  // Keep the result, just close overlay
+  document.getElementById('pickOverlay').style.display = 'none';
+  // Reset for next use
+  pickState = 'idle';
+  const btn = document.getElementById('btnPick');
+  btn.textContent = '🎲 随机点名';
+  btn.classList.remove('running');
+  if (prevCell) {
+    // Keep seat-picked highlight visible even after closing overlay
+  }
+}
+
+function restartPick() {
+  // Clean up current result
+  if (prevCell) {
+    prevCell.classList.remove('seat-picking', 'seat-picked');
+    if (prevCell.dataset.origClass) {
+      prevCell.className = prevCell.dataset.origClass;
+    }
+    prevCell = null;
+  }
+  pickState = 'idle';
+  document.getElementById('btnPick').textContent = '🎲 随机点名';
+  document.getElementById('btnPick').classList.remove('running');
+  startPick();
+}
+
+function closePick() {
+  pickState = 'idle';
+  clearTimeout(pickTimer);
+  document.getElementById('pickOverlay').style.display = 'none';
+  const btn = document.getElementById('btnPick');
+  btn.textContent = '🎲 随机点名';
+  btn.classList.remove('running');
+  // Clean up grid highlight
+  if (prevCell) {
+    prevCell.classList.remove('seat-picking', 'seat-picked');
+    if (prevCell.dataset.origClass) {
+      prevCell.className = prevCell.dataset.origClass;
+    }
+    prevCell = null;
+  }
+  pickResult = null;
+}
+
+// Space key to stop
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && pickState === 'running') {
+    e.preventDefault();
+    stopPick();
+  }
+});
+
+// Clean up picker when switching to list view
+const origSwitchView = switchView;
+switchView = function(view) {
+  if (view === 'list' && pickState === 'running') {
+    stopPick();
+  }
+  origSwitchView(view);
+};
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+<%- include('../partial/footer') %>

@@ -1,0 +1,29 @@
+<%- include('../partial/header', { title: '教师登录' }) %>
+<div class="auth-container">
+  <div class="auth-card">
+    <h1>📋 课堂点名系统</h1>
+    <h2>教师登录</h2>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert-success"><%= success %></div>
+    <% } %>
+
+    <form method="POST" action="/teacher/login">
+      <div class="form-group">
+        <label for="username">用户名</label>
+        <input type="text" id="username" name="username" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">登 录</button>
+    </form>
+
+    <p class="auth-link">如需创建教师账号，请联系管理员</p>
+  </div>
+</div>
+<%- include('../partial/footer') %>

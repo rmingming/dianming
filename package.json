@@ -1,0 +1,18 @@
+{
+  "name": "dianming",
+  "version": "1.0.0",
+  "description": "教室上课点名系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "ejs": "^3.1.10",
+    "express": "^4.21.0",
+    "express-session": "^1.18.0",
+    "qrcode": "^1.5.4",
+    "sql.js": "^1.12.0"
+  }
+}

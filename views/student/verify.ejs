@@ -1,0 +1,46 @@
+<%- include('../partial/header', { title: '学生签到' }) %>
+<div class="mobile-container">
+  <div class="mobile-card">
+    <div class="mobile-logo" id="pageIcon">📋</div>
+    <h1 id="pageTitle">课堂签到</h1>
+    <p class="mobile-subtitle" id="pageSubtitle">请输入教师提供的课程口令</p>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/student/verify" id="verifyForm">
+      <div class="form-group">
+        <label for="password">课程口令</label>
+        <input type="text" id="password" name="password"
+               class="input-password" maxlength="4"
+               placeholder="输入4位数字口令"
+               pattern="[0-9]{4}"
+               inputmode="numeric"
+               autofocus autocomplete="off" required>
+      </div>
+      <button type="submit" id="submitBtn" class="btn btn-primary btn-block btn-large">验 证</button>
+    </form>
+  </div>
+</div>
+
+<script>
+// Check if QR code URL contains a course password
+const params = new URLSearchParams(window.location.search);
+const code = params.get('code');
+
+if (code && /^\d{4}$/.test(code)) {
+  // Auto-fill and auto-submit when the password comes from QR code
+  document.getElementById('pageTitle').textContent = '扫码签到';
+  document.getElementById('pageSubtitle').textContent = '正在自动验证口令...';
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('submitBtn').textContent = '验证中...';
+  document.getElementById('password').value = code;
+
+  // Brief delay so students see what's happening
+  setTimeout(() => {
+    document.getElementById('verifyForm').submit();
+  }, 600);
+}
+</script>
+<%- include('../partial/footer') %>

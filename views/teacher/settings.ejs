@@ -1,0 +1,66 @@
+<%- include('../partial/header', { title: '课程设置' }) %>
+<header class="topbar">
+  <a href="/teacher/course/<%= course.id %>" class="topbar-back">← 返回</a>
+  <span class="topbar-title">课程设置</span>
+  <span class="topbar-user">👤 <%= session.teacherName %></span>
+</header>
+
+<main class="main-container">
+  <h1>⚙️ <%= course.name %></h1>
+
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error"><%= error %></div>
+  <% } %>
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="alert alert-success"><%= success %></div>
+  <% } %>
+
+  <form method="POST" action="/teacher/course/<%= course.id %>/settings" onsubmit="return saveSettings(event)" class="card">
+    <div class="form-group">
+      <label for="name">课程名称</label>
+      <input type="text" id="name" name="name" value="<%= course.name %>" required>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="maxRow">最大排数 (1-20)</label>
+        <input type="number" id="maxRow" name="maxRow" value="<%= course.max_row %>" min="1" max="20" required>
+      </div>
+      <div class="form-group">
+        <label for="maxCol">最大列数 (1-20)</label>
+        <input type="number" id="maxCol" name="maxCol" value="<%= course.max_col %>" min="1" max="20" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="studentList">学生名单（格式：学号,姓名  每行一个）</label>
+      <textarea id="studentList" name="studentList" rows="10"><%
+        studentList.forEach(s => { %>
+<%= s.student_id %>,<%= s.name %><% }) %></textarea>
+      <small>注意：修改名单会覆盖原有名单，并可能影响签到验证。</small>
+    </div>
+    <button type="submit" class="btn btn-primary">保存设置</button>
+  </form>
+</main>
+
+<script>
+async function saveSettings(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = new FormData(form);
+  const json = Object.fromEntries(data.entries());
+
+  const res = await fetch('/teacher/course/<%= course.id %>', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(json)
+  });
+
+  const result = await res.json();
+  if (result.success) {
+    alert('保存成功');
+    window.location.href = '/teacher/course/<%= course.id %>';
+  } else {
+    alert(result.error || '保存失败');
+  }
+}
+</script>
+<%- include('../partial/footer') %>

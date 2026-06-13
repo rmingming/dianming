@@ -1,0 +1,175 @@
+<%- include('../partial/header', { title: '填写签到' }) %>
+<div class="mobile-container">
+  <div class="mobile-card">
+
+    <% if (success) { %>
+      <!-- ===== SUCCESS STATE ===== -->
+      <div class="success-icon">✅</div>
+      <h1>签到成功！</h1>
+      <div class="checkin-result">
+        <div class="result-row">
+          <span class="result-label">学号</span>
+          <span class="result-value"><%= success.studentId %></span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">姓名</span>
+          <span class="result-value"><%= success.name %></span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">座位</span>
+          <span class="result-value"><%= success.row %>排 <%= success.col %>列</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">时间</span>
+          <span class="result-value"><%= success.time %></span>
+        </div>
+      </div>
+      <p class="success-note">请勿重复签到，如需修改请联系教师</p>
+
+    <% } else { %>
+      <!-- ===== CHECKIN FORM ===== -->
+      <div class="mobile-logo">✍️</div>
+      <h1><%= course.name %></h1>
+      <p class="mobile-subtitle">填写签到信息</p>
+
+      <% if (error) { %>
+        <div class="alert alert-error"><%= error %></div>
+      <% } %>
+
+      <form method="POST" action="/student/checkin" onsubmit="return validateForm()">
+        <input type="hidden" name="courseId" value="<%= course.id %>">
+        <input type="hidden" id="studentId" name="studentId" value="<%= formData.studentId || '' %>">
+        <input type="hidden" id="name" name="name" value="<%= formData.name || '' %>">
+
+        <!-- Student search -->
+        <div class="form-group" style="position:relative;">
+          <label for="searchInput">搜索你的姓名或学号 *</label>
+          <input type="text" id="searchInput"
+                 placeholder="输入姓名、学号或拼音首字母（如 zs）"
+                 autocomplete="off" autofocus>
+          <div id="searchDropdown" class="search-dropdown" style="display:none;"></div>
+        </div>
+
+        <!-- Selected student display -->
+        <div id="selectedStudent" class="selected-student" style="<%= formData.studentId ? '' : 'display:none' %>">
+          <span class="selected-icon">👤</span>
+          <span class="selected-text" id="selectedText">
+            <%= formData.studentId ? formData.studentId + ' ' + formData.name : '' %>
+          </span>
+          <button type="button" class="btn btn-sm" onclick="clearStudent()">✖ 重选</button>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="row">排 *</label>
+            <select id="row" name="row" required>
+              <option value="">选择排</option>
+              <% for (let r = 1; r <= course.max_row; r++) { %>
+                <option value="<%= r %>" <%= formData.row == r ? 'selected' : '' %>>第<%= r %>排</option>
+              <% } %>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="col">列 *</label>
+            <select id="col" name="col" required>
+              <option value="">选择列</option>
+              <% for (let c = 1; c <= course.max_col; c++) { %>
+                <option value="<%= c %>" <%= formData.col == c ? 'selected' : '' %>>第<%= c %>列</option>
+              <% } %>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-large">提交签到</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<script>
+// ── Student search with pinyin support ──
+let selectedStudentData = null;
+let searchTimer = null;
+let abortController = null;
+<% if (formData.studentId) { %>
+selectedStudentData = { studentId: '<%= formData.studentId %>', name: '<%= formData.name %>' };
+<% } %>
+
+const searchInput = document.getElementById('searchInput');
+const searchDropdown = document.getElementById('searchDropdown');
+
+searchInput.addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  var q = this.value.trim();
+  if (!q) { searchDropdown.style.display = 'none'; return; }
+  searchTimer = setTimeout(function() { doSearch(q); }, 200);
+});
+
+searchInput.addEventListener('focus', function() {
+  var q = this.value.trim();
+  if (q && searchDropdown.children.length > 0) searchDropdown.style.display = 'block';
+});
+
+searchInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') searchDropdown.style.display = 'none';
+});
+
+document.addEventListener('click', function(e) {
+  if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+    searchDropdown.style.display = 'none';
+  }
+});
+
+async function doSearch(q) {
+  if (abortController) abortController.abort();
+  abortController = new AbortController();
+  try {
+    var url = '/student/api/roster?courseId=<%= course.id %>&q=' + encodeURIComponent(q);
+    var res = await fetch(url, { signal: abortController.signal });
+    var data = await res.json();
+    var results = data.students || [];
+    // Only show when uniquely matched (privacy protection)
+    if (results.length === 1) {
+      var s = results[0];
+      searchDropdown.innerHTML =
+        '<div class="search-item" onclick="selectStudent(\'' + escAttr(s.student_id) + '\', \'' + escAttr(s.name) + '\')">' +
+          '<span class="search-item-id">' + esc(s.student_id) + '</span>' +
+          '<span class="search-item-name">' + esc(s.name) + '</span>' +
+        '</div>';
+      searchDropdown.style.display = 'block';
+    } else {
+      searchDropdown.style.display = 'none';
+    }
+  } catch (e) { if (e.name !== 'AbortError') console.error(e); }
+}
+
+function selectStudent(studentId, name) {
+  selectedStudentData = { studentId: studentId, name: name };
+  document.getElementById('studentId').value = studentId;
+  document.getElementById('name').value = name;
+  document.getElementById('selectedText').textContent = studentId + ' ' + name;
+  document.getElementById('selectedStudent').style.display = 'flex';
+  searchInput.value = '';
+  searchDropdown.style.display = 'none';
+}
+
+function clearStudent() {
+  selectedStudentData = null;
+  document.getElementById('studentId').value = '';
+  document.getElementById('name').value = '';
+  document.getElementById('selectedStudent').style.display = 'none';
+  document.getElementById('selectedText').textContent = '';
+  searchInput.value = '';
+  searchInput.focus();
+}
+
+function validateForm() {
+  if (!selectedStudentData) { alert('请先从列表中搜索并选择你的姓名'); return false; }
+  return true;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s).replace(/'/g,'\\u0027').replace(/"/g,'&quot;'); }
+</script>
+
+<%- include('../partial/footer') %>

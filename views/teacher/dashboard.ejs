@@ -1,0 +1,117 @@
+<%- include('../partial/header', { title: '我的课程' }) %>
+<header class="topbar">
+  <span class="topbar-title">📋 课堂点名系统</span>
+  <span class="topbar-user">
+    👤 <%= session.teacherName %>
+    <a href="/teacher/logout" class="btn btn-sm">退出</a>
+  </span>
+</header>
+
+<main class="main-container">
+  <div class="page-header">
+    <h1>我的课程</h1>
+    <button class="btn btn-primary" onclick="showCreateForm()">+ 创建新课</button>
+  </div>
+
+  <!-- Create course form (hidden by default) -->
+  <div id="createForm" class="card" style="display:none; margin-bottom: 24px;">
+    <h2>创建新课程</h2>
+    <form id="newCourseForm" onsubmit="return createCourse(event)">
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label for="courseName">课程名称 *</label>
+          <input type="text" id="courseName" name="name" required
+                 placeholder="例：高等数学 第3周">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="maxRow">最大排数 * (1-20)</label>
+          <input type="number" id="maxRow" name="maxRow" value="10" min="1" max="20" required>
+        </div>
+        <div class="form-group">
+          <label for="maxCol">最大列数 * (1-20)</label>
+          <input type="number" id="maxCol" name="maxCol" value="10" min="1" max="20" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="studentList">
+          学生名单（可选，格式：学号,姓名  每行一个）
+        </label>
+        <textarea id="studentList" name="studentList" rows="5"
+                  placeholder="2024001,张三&#10;2024002,李四&#10;2024003,王五"></textarea>
+        <small>如果不填名单，签到时不校验学号。添加名单后系统会自动校验。</small>
+      </div>
+      <button type="submit" class="btn btn-primary">创建课程并开始签到</button>
+      <button type="button" class="btn" onclick="hideCreateForm()">取消</button>
+    </form>
+    <div id="createResult" class="create-result" style="display:none;"></div>
+  </div>
+
+  <!-- Course list -->
+  <% if (courses.length === 0) { %>
+    <div class="empty-state">
+      <p>📭 还没有课程，点击上方按钮创建第一门课吧</p>
+    </div>
+  <% } else { %>
+    <div class="course-grid">
+      <% courses.forEach(course => { %>
+        <a href="/teacher/course/<%= course.id %>" class="course-card">
+          <div class="course-status">
+            <span class="badge <%= course.status === 'active' ? 'badge-active' : 'badge-ended' %>">
+              <%= course.status === 'active' ? '进行中' : '已结束' %>
+            </span>
+          </div>
+          <h3><%= course.name %></h3>
+          <div class="course-meta">
+            <span>🪑 <%= course.max_row %>排 × <%= course.max_col %>列</span>
+            <span>🔑 <%= course.password %></span>
+          </div>
+          <div class="course-time">
+            创建于 <%= course.created_at %>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+</main>
+
+<script>
+function showCreateForm() {
+  document.getElementById('createForm').style.display = 'block';
+  document.getElementById('createResult').style.display = 'none';
+}
+
+function hideCreateForm() {
+  document.getElementById('createForm').style.display = 'none';
+}
+
+async function createCourse(e) {
+  e.preventDefault();
+  const form = document.getElementById('newCourseForm');
+  const data = new FormData(form);
+  const json = Object.fromEntries(data.entries());
+
+  const res = await fetch('/teacher/courses', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(json)
+  });
+
+  const result = await res.json();
+  const div = document.getElementById('createResult');
+  div.style.display = 'block';
+
+  if (result.success) {
+    div.className = 'alert alert-success';
+    div.innerHTML = `
+      ✅ 课程创建成功！口令：<strong>${result.password}</strong>
+      <br><a href="/teacher/course/${result.id}">进入课程 →</a>
+    `;
+  } else {
+    div.className = 'alert alert-error';
+    div.textContent = result.error || '创建失败';
+  }
+}
+</script>
+<%- include('../partial/footer') %>
