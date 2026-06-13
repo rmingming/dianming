@@ -26,7 +26,7 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label for="maxRow">最大排数 * (1-20)</label>
+          <label for="maxRow">最大行数 * (1-20)</label>
           <input type="number" id="maxRow" name="maxRow" value="10" min="1" max="20" required>
         </div>
         <div class="form-group">
@@ -64,7 +64,7 @@
           </div>
           <h3><%= course.name %></h3>
           <div class="course-meta">
-            <span>🪑 <%= course.max_row %>排 × <%= course.max_col %>列</span>
+            <span>🪑 <%= course.max_row %>行 × <%= course.max_col %>列</span>
             <span>🔑 <%= course.password %></span>
           </div>
           <div class="course-time">

@@ -71,7 +71,7 @@ async function main() {
     courseId: course.id, studentId: 'S001', name: '张三', row: 2, col: 3,
   });
   check('Checkin success', r.body.includes('签到成功'));
-  check('Shows correct seat', r.body.includes('2排') && r.body.includes('3列'));
+  check('Shows correct seat', r.body.includes('2行') && r.body.includes('3列'));
 
   console.log('\n=== 6. Invalid QR code ===');
   r = await request('GET', '/student?code=9999');

@@ -17,7 +17,7 @@
         </div>
         <div class="result-row">
           <span class="result-label">座位</span>
-          <span class="result-value"><%= success.row %>排 <%= success.col %>列</span>
+          <span class="result-value"><%= success.row %>行 <%= success.col %>列</span>
         </div>
         <div class="result-row">
           <span class="result-label">时间</span>
@@ -42,7 +42,7 @@
         <input type="hidden" id="name" name="name" value="<%= formData.name || '' %>">
 
         <!-- Student search -->
-        <div class="form-group" style="position:relative;">
+        <div class="form-group" id="searchGroup" style="position:relative;">
           <label for="searchInput">搜索你的姓名或学号 *</label>
           <input type="text" id="searchInput"
                  placeholder="输入姓名、学号或拼音首字母（如 zs）"
@@ -61,11 +61,11 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="row">排 *</label>
+            <label for="row">行 *</label>
             <select id="row" name="row" required>
-              <option value="">选择排</option>
+              <option value="">选择行</option>
               <% for (let r = 1; r <= course.max_row; r++) { %>
-                <option value="<%= r %>" <%= formData.row == r ? 'selected' : '' %>>第<%= r %>排</option>
+                <option value="<%= r %>" <%= formData.row == r ? 'selected' : '' %>>第<%= r %>行</option>
               <% } %>
             </select>
           </div>
@@ -149,6 +149,7 @@ function selectStudent(studentId, name) {
   document.getElementById('name').value = name;
   document.getElementById('selectedText').textContent = studentId + ' ' + name;
   document.getElementById('selectedStudent').style.display = 'flex';
+  document.getElementById('searchGroup').style.display = 'none';
   searchInput.value = '';
   searchDropdown.style.display = 'none';
 }
@@ -158,6 +159,7 @@ function clearStudent() {
   document.getElementById('studentId').value = '';
   document.getElementById('name').value = '';
   document.getElementById('selectedStudent').style.display = 'none';
+  document.getElementById('searchGroup').style.display = 'block';
   document.getElementById('selectedText').textContent = '';
   searchInput.value = '';
   searchInput.focus();

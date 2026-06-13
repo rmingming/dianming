@@ -23,7 +23,7 @@
     </div>
     <div class="info-item">
       <span class="info-label">座位范围</span>
-      <span><%= course.max_row %>排 × <%= course.max_col %>列</span>
+      <span><%= course.max_row %>行 × <%= course.max_col %>列</span>
     </div>
     <div class="info-actions">
       <% if (course.status === 'active') { %>
@@ -94,19 +94,19 @@
         <tbody>
           <% for (let r = course.max_row; r >= 1; r--) { %>
           <tr>
-            <th>排<%= r %></th>
+            <th>行<%= r %></th>
             <% for (let c = 1; c <= course.max_col; c++) {
               const seatCheckins = checkins.filter(ci => ci.row === r && ci.col === c);
               let cls = 'seat-empty';
-              let title = `${r}排${c}列 - 空位`;
+              let title = `${r}行${c}列 - 空位`;
               let content = '';
               if (seatCheckins.length >= 2) {
                 cls = 'seat-conflict';
-                title = `${r}排${c}列 - 冲突! ${seatCheckins.map(s => s.name).join(', ')}`;
+                title = `${r}行${c}列 - 冲突! ${seatCheckins.map(s => s.name).join(', ')}`;
                 content = seatCheckins.map(s => s.name).join('/');
               } else if (seatCheckins.length === 1) {
                 cls = 'seat-taken';
-                title = `${r}排${c}列 - ${seatCheckins[0].student_id} ${seatCheckins[0].name}`;
+                title = `${r}行${c}列 - ${seatCheckins[0].student_id} ${seatCheckins[0].name}`;
                 content = seatCheckins[0].name;
               }
             %>
@@ -123,7 +123,7 @@
       <div class="conflict-alert">
         ⚠️ 检测到 <strong><%= conflictSeats.length %></strong> 个座位冲突：
         <% conflictSeats.forEach(cs => { %>
-          <%= cs.row %>排<%= cs.col %>列
+          <%= cs.row %>行<%= cs.col %>列
         <% }) %>
       </div>
     <% } %>
@@ -152,7 +152,7 @@
           <th>#</th>
           <th>学号</th>
           <th>姓名</th>
-          <th>排</th>
+          <th>行</th>
           <th>列</th>
           <th>签到时间</th>
           <th>操作</th>
@@ -211,11 +211,11 @@
         <form onsubmit="return manualCheckin(event)" style="margin-top:12px;">
           <div class="form-row">
             <div class="form-group">
-              <label>排</label>
+              <label>行</label>
               <select id="manualRow" required>
-                <option value="">选择排</option>
+                <option value="">选择行</option>
                 <% for (let r = 1; r <= course.max_row; r++) { %>
-                  <option value="<%= r %>">第<%= r %>排</option>
+                  <option value="<%= r %>">第<%= r %>行</option>
                 <% } %>
               </select>
             </div>
@@ -262,7 +262,7 @@ function switchView(view) {
 
 // ── Reset checkin ──
 function resetCheckin(id, sid, name, row, col) {
-  if (!confirm(`确定要重置 ${sid} ${name} 的签到（${row}排${col}列）吗？\n\n重置后该学生可重新签到。`)) return;
+  if (!confirm(`确定要重置 ${sid} ${name} 的签到（${row}行${col}列）吗？\n\n重置后该学生可重新签到。`)) return;
 
   fetch('/teacher/course/<%= course.id %>/checkins/' + id, { method: 'DELETE' })
     .then(r => r.json())
@@ -364,15 +364,15 @@ function rebuildGrid(checkins) {
       if (entries.length >= 2) {
         cell.className = 'seat-conflict';
         cell.textContent = entries.map(s => s.name).join('/');
-        cell.title = `${r}排${co}列 - 冲突! ${entries.map(s => s.name).join(', ')}`;
+        cell.title = `${r}行${co}列 - 冲突! ${entries.map(s => s.name).join(', ')}`;
       } else if (entries.length === 1) {
         cell.className = 'seat-taken';
         cell.textContent = entries[0].name;
-        cell.title = `${r}排${co}列 - ${entries[0].student_id} ${entries[0].name}`;
+        cell.title = `${r}行${co}列 - ${entries[0].student_id} ${entries[0].name}`;
       } else {
         cell.className = 'seat-empty';
         cell.textContent = '';
-        cell.title = `${r}排${co}列 - 空位`;
+        cell.title = `${r}行${co}列 - 空位`;
       }
     }
   }
@@ -523,7 +523,7 @@ async function manualCheckin(e) {
   const row = parseInt(document.getElementById('manualRow').value);
   const col = parseInt(document.getElementById('manualCol').value);
   if (!row || !col) {
-    alert('请填写排和列');
+    alert('请填写行和列');
     return;
   }
 
@@ -654,7 +654,7 @@ function cyclePick() {
   // Update overlay
   document.getElementById('pickAvatar').textContent = pickCurrent.name.charAt(0);
   document.getElementById('pickName').textContent = pickCurrent.name;
-  document.getElementById('pickInfo').textContent = `${pickCurrent.student_id} · ${pickCurrent.row}排${pickCurrent.col}列`;
+  document.getElementById('pickInfo').textContent = `${pickCurrent.student_id} · ${pickCurrent.row}行${pickCurrent.col}列`;
 
   // Speed progression
   const elapsed = Date.now() - pickStartTime;
@@ -714,7 +714,7 @@ function stopPick() {
   document.getElementById('pickAvatar').textContent = pickResult ? pickResult.name.charAt(0) : '?';
   document.getElementById('pickName').textContent = pickResult ? pickResult.name : '';
   document.getElementById('pickInfo').textContent = pickResult
-    ? `${pickResult.student_id} · ${pickResult.row}排${pickResult.col}列`
+    ? `${pickResult.student_id} · ${pickResult.row}行${pickResult.col}列`
     : '';
   document.getElementById('pickActions').style.display = 'flex';
 

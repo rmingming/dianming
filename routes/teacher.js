@@ -82,13 +82,13 @@ router.post('/courses', requireAuth, (req, res) => {
   const teacherId = req.session.teacherId;
 
   if (!name || !maxRow || !maxCol) {
-    return res.status(400).json({ error: '课程名称、排数、列数为必填项' });
+    return res.status(400).json({ error: '课程名称、行数、列数为必填项' });
   }
 
   const row = parseInt(maxRow);
   const col = parseInt(maxCol);
   if (row < 1 || row > 20 || col < 1 || col > 20) {
-    return res.status(400).json({ error: '排数和列数必须在 1-20 之间' });
+    return res.status(400).json({ error: '行数和列数必须在 1-20 之间' });
   }
 
   const password = generatePassword();
@@ -312,7 +312,7 @@ router.post('/course/:id/checkins', requireAuth, (req, res) => {
     'SELECT * FROM checkins WHERE course_id = ? AND row = ? AND col = ? AND reset_at IS NULL',
     [course.id, row, col]
   );
-  if (seatTaken) return res.status(409).json({ error: `该座位(${row}排${col}列)已被占用` });
+  if (seatTaken) return res.status(409).json({ error: `该座位(${row}行${col}列)已被占用` });
 
   // Check student not already checked in
   const existing = db.get(
@@ -355,7 +355,7 @@ router.get('/course/:id/export', requireAuth, (req, res) => {
     [course.id]
   );
 
-  let csv = '﻿学号,姓名,排,列,签到时间\n'; // BOM for Excel
+  let csv = '﻿学号,姓名,行,列,签到时间\n'; // BOM for Excel
   for (const c of checkins) {
     csv += `${c.student_id},${c.name},${c.row},${c.col},${c.created_at}\n`;
   }
@@ -419,7 +419,7 @@ router.put('/course/:id', requireAuth, (req, res) => {
   const col = parseInt(maxCol) || course.max_col;
 
   if (row < 1 || row > 20 || col < 1 || col > 20) {
-    return res.status(400).json({ error: '排数和列数必须在 1-20 之间' });
+    return res.status(400).json({ error: '行数和列数必须在 1-20 之间' });
   }
 
   db.run('UPDATE courses SET name = ?, max_row = ?, max_col = ? WHERE id = ?',

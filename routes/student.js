@@ -85,7 +85,7 @@ router.post('/checkin', (req, res) => {
   const c = parseInt(col);
   if (isNaN(r) || isNaN(c) || r < 1 || r > course.max_row || c < 1 || c > course.max_col) {
     return renderCheckinError(req, res, { studentId, name, row, col },
-      `座位超出范围（排：1-${course.max_row}，列：1-${course.max_col}）`);
+      `座位超出范围（行：1-${course.max_row}，列：1-${course.max_col}）`);
   }
 
   // Verify student is in the roster
@@ -111,7 +111,7 @@ router.post('/checkin', (req, res) => {
   );
   if (existingCheckin) {
     return renderCheckinError(req, res, { studentId, name, row, col },
-      `你已签到过了（${existingCheckin.row}排${existingCheckin.col}列），如需修改请联系教师重置`);
+      `你已签到过了（${existingCheckin.row}行${existingCheckin.col}列），如需修改请联系教师重置`);
   }
 
   // Check seat availability
@@ -121,7 +121,7 @@ router.post('/checkin', (req, res) => {
   );
   if (seatTaken) {
     return renderCheckinError(req, res, { studentId, name, row, col },
-      `该座位(${r}排${c}列)已被占用，请确认你的座位后重新签到`);
+      `该座位(${r}行${c}列)已被占用，请确认你的座位后重新签到`);
   }
 
   // Insert checkin
