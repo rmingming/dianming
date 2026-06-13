@@ -29,7 +29,7 @@
       <% if (course.status === 'active') { %>
         <button class="btn" onclick="showQR()" title="展示签到二维码">📱 二维码</button>
         <button class="btn btn-warn" onclick="endCourse()">⏹ 结束签到</button>
-        <button class="btn btn-sm" onclick="regeneratePassword()">🔄 新口令</button>
+        <button class="btn btn-sm" onclick="copyCheckinUrl()">📋 复制签到地址</button>
       <% } else { %>
         <button class="btn btn-primary" onclick="startCourse()">▶ 重新开始</button>
       <% } %>
@@ -439,6 +439,17 @@ async function deleteCourse() {
     location.href = '/teacher/dashboard';
   } else {
     alert(data.error || '删除失败');
+  }
+}
+
+async function copyCheckinUrl() {
+  const pwd = document.getElementById('passwordDisplay').textContent.trim();
+  const url = location.origin + '/student?code=' + pwd;
+  try {
+    await navigator.clipboard.writeText(url);
+    alert('已复制签到地址：\n' + url);
+  } catch {
+    prompt('请手动复制：', url);
   }
 }
 
