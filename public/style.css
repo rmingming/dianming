@@ -529,6 +529,20 @@ a:hover { text-decoration: underline; }
   transition: all 0.06s;
 }
 
+/* Grid cell — drag selecting (preview during mouse drag) */
+.seat-selecting {
+  background: #dbeafe !important;
+  outline: 2px dashed #3b82f6 !important;
+  outline-offset: -2px;
+}
+
+/* Grid cell — selected (locked selection area) */
+.seat-selected {
+  background: #dbeafe !important;
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
 /* Grid cell — picked (result) */
 .seat-picked {
   background: #fef3c7 !important;

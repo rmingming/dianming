@@ -342,6 +342,29 @@ router.post('/course/:id/checkins', requireAuth, (req, res) => {
   res.status(201).json({ success: true, checkin: newCheckin });
 });
 
+// ── API: Reset all checkins ──
+router.post('/course/:id/reset-all', requireAuth, (req, res) => {
+  const course = db.get(
+    'SELECT * FROM courses WHERE id = ? AND teacher_id = ?',
+    [req.params.id, req.session.teacherId]
+  );
+  if (!course) return res.status(404).json({ error: '课程不存在' });
+
+  // Mark all active checkins as reset
+  db.run(
+    'UPDATE checkins SET reset_at = datetime("now","localtime") WHERE course_id = ? AND reset_at IS NULL',
+    [course.id]
+  );
+
+  // Notify SSE clients to reload
+  const { sseEmitter } = require('../server');
+  sseEmitter.emit(`course_${course.id}`, {
+    type: 'reset-all',
+  });
+
+  res.json({ success: true });
+});
+
 // ── API: Export checkins to CSV ──
 router.get('/course/:id/export', requireAuth, (req, res) => {
   const course = db.get(
@@ -355,14 +378,38 @@ router.get('/course/:id/export', requireAuth, (req, res) => {
     [course.id]
   );
 
-  let csv = '﻿学号,姓名,行,列,签到时间\n'; // BOM for Excel
+  const absent = db.all(
+    `SELECT s.student_id, s.name FROM students s
+     WHERE s.course_id = ?
+       AND NOT EXISTS (
+         SELECT 1 FROM checkins c
+         WHERE c.course_id = s.course_id
+           AND c.student_id = s.student_id
+           AND c.reset_at IS NULL
+       )
+     ORDER BY s.student_id`,
+    [course.id]
+  );
+
+  // Build CSV with BOM for Excel
+  let csv = '﻿学号,姓名,座位行,座位列,签到时间,签到状态\n';
   for (const c of checkins) {
-    csv += `${c.student_id},${c.name},${c.row},${c.col},${c.created_at}\n`;
+    csv += `${c.student_id},${c.name},${c.row},${c.col},${c.created_at},已签到\n`;
+  }
+  for (const a of absent) {
+    csv += `${a.student_id},${a.name},,,,未签到\n`;
   }
 
+  // Generate filename: 课程名_日期_星期几.csv
+  const now = new Date();
+  const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const filename = `${course.name}_${y}-${m}-${d}_${weekDays[now.getDay()]}.csv`;
+
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  // Use attachment() to handle Unicode filenames safely
-  res.attachment(`${course.name}_签到记录.csv`);
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
   res.send(csv);
 });
 
