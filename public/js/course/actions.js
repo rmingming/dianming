@@ -69,6 +69,30 @@ async function resetAllCheckins() {
   }
 }
 
+function resetSelectedSeat() {
+  var cell = document.querySelector('td.seat-selected[data-checkin-id]');
+  if (!cell) return;
+
+  var checkinId = cell.dataset.checkinId;
+  var sid = cell.dataset.studentId;
+  var name = cell.dataset.studentName;
+  var row = cell.dataset.row;
+  var col = cell.dataset.col;
+
+  if (!confirm('确定要重置 ' + sid + ' ' + name + ' 的签到（' + row + '行' + col + '列）吗？\n\n重置后该学生可重新签到。')) return;
+
+  fetch('/teacher/course/' + window.COURSE_ID + '/checkins/' + checkinId, { method: 'DELETE' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        updateGrid();
+        updateStats();
+      } else {
+        alert(data.error || '重置失败');
+      }
+    });
+}
+
 function showQR() {
   const modal = document.getElementById('qrModal');
   const img = document.getElementById('qrImage');

@@ -70,6 +70,7 @@
     <button class="btn active" id="btnGridView" onclick="switchView('grid')">🗺 网格视图</button>
     <button class="btn btn-pick" id="btnPick" onclick="togglePick()">🎲 随机点名</button>
     <button class="btn" id="btnListView" onclick="switchView('list')">📋 列表视图</button>
+    <button class="btn btn-sm" id="btnResetSeat" onclick="resetSelectedSeat()" disabled>重置选中座位</button>
     <a href="/teacher/course/<%= course.id %>/export" class="btn btn-sm">📥 导出CSV</a>
   </div>
 
@@ -111,7 +112,10 @@
                 content = seatCheckins[0].name;
               }
             %>
-              <td class="<%= cls %>" title="<%= title %>" data-row="<%= r %>" data-col="<%= c %>">
+              <td class="<%= cls %>" title="<%= title %>" data-row="<%= r %>" data-col="<%= c %>"
+                  data-checkin-id="<%= seatCheckins.length === 1 ? seatCheckins[0].id : '' %>"
+                  data-student-id="<%= seatCheckins.length === 1 ? seatCheckins[0].student_id : '' %>"
+                  data-student-name="<%= seatCheckins.length === 1 ? seatCheckins[0].name : '' %>">
                 <%= content %>
               </td>
             <% } %>

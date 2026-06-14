@@ -39,6 +39,11 @@ function rebuildGrid(checkins) {
       const cell = grid.querySelector(`td[data-row="${r}"][data-col="${co}"]`);
       if (!cell) continue;
       const entries = seatMap[key] || [];
+      // Clear previous data
+      delete cell.dataset.checkinId;
+      delete cell.dataset.studentId;
+      delete cell.dataset.studentName;
+
       if (entries.length >= 2) {
         cell.className = 'seat-conflict';
         cell.textContent = entries.map(s => s.name).join('/');
@@ -47,6 +52,10 @@ function rebuildGrid(checkins) {
         cell.className = 'seat-taken';
         cell.textContent = entries[0].name;
         cell.title = `${r}行${co}列 - ${entries[0].student_id} ${entries[0].name}`;
+        // Store checkin info for right-click reset
+        cell.dataset.checkinId = entries[0].id;
+        cell.dataset.studentId = entries[0].student_id;
+        cell.dataset.studentName = entries[0].name;
       } else {
         cell.className = 'seat-empty';
         cell.textContent = '';
@@ -194,7 +203,27 @@ function initGridSelection() {
     clearAllSelectionClasses();
     applySelectionClasses();
     updatePickButtonLabel();
+    updateResetSeatButton();
   });
+
+}
+
+function updateResetSeatButton() {
+  var btn = document.getElementById('btnResetSeat');
+  if (!btn) return;
+
+  // Enable only for 1x1 selection on an occupied cell
+  if (selectionRect &&
+      selectionRect.rowMin === selectionRect.rowMax &&
+      selectionRect.colMin === selectionRect.colMax) {
+    var cell = document.querySelector(
+      'td[data-row="' + selectionRect.rowMin + '"][data-col="' + selectionRect.colMin + '"]');
+    if (cell && cell.dataset.checkinId) {
+      btn.disabled = false;
+      return;
+    }
+  }
+  btn.disabled = true;
 }
 
 function renderSelectionPreview(rect) {
@@ -246,6 +275,7 @@ function clearSelection() {
   selectionRect = null;
   clearAllSelectionClasses();
   updatePickButtonLabel();
+  updateResetSeatButton();
 }
 
 function updatePickButtonLabel() {

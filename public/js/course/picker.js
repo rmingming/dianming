@@ -176,4 +176,7 @@ function resetSelectionToFullGrid() {
       c.classList.remove('seat-selecting', 'seat-selected');
     });
   }
+  // Disable reset-seat button
+  var btn = document.getElementById('btnResetSeat');
+  if (btn) btn.disabled = true;
 }
