@@ -34,8 +34,9 @@ async function startPick() {
     checkins = await res.json();
   } catch { return; }
 
-  // Filter by selection rect if active
-  if (selectionRect) {
+  // Filter by selection rect only when multiple cells are selected
+  if (selectionRect &&
+      !(selectionRect.rowMin === selectionRect.rowMax && selectionRect.colMin === selectionRect.colMax)) {
     checkins = checkins.filter(function(c) {
       return c.row >= selectionRect.rowMin && c.row <= selectionRect.rowMax &&
              c.col >= selectionRect.colMin && c.col <= selectionRect.colMax;
@@ -152,7 +153,9 @@ function restartPick() {
   pickState = 'idle';
   document.getElementById('btnPick').classList.remove('running');
   // Keep area selection — restart within same area
-  document.getElementById('btnPick').textContent = selectionRect ? '🎲 区域内点名' : '🎲 随机点名';
+  var isMulti = selectionRect &&
+    !(selectionRect.rowMin === selectionRect.rowMax && selectionRect.colMin === selectionRect.colMax);
+  document.getElementById('btnPick').textContent = isMulti ? '🎲 区域内点名' : '🎲 随机点名';
   startPick();
 }
 

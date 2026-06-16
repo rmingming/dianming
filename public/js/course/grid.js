@@ -279,9 +279,11 @@ function clearSelection() {
 function updatePickButtonLabel() {
   const btn = document.getElementById('btnPick');
   if (!btn) return;
-  // Only update when picker is idle (not during picking animation)
   if (typeof pickState !== 'undefined' && pickState !== 'idle') return;
-  btn.textContent = selectionRect ? '🎲 区域内点名' : '🎲 随机点名';
+  // Only show "area pick" when selection covers 2+ cells
+  var isMulti = selectionRect &&
+    !(selectionRect.rowMin === selectionRect.rowMax && selectionRect.colMin === selectionRect.colMax);
+  btn.textContent = isMulti ? '🎲 区域内点名' : '🎲 随机点名';
 }
 
 // Init selection: scripts are at end of body, DOM is already parsed
