@@ -32,14 +32,13 @@ function rebuildGrid(checkins) {
     seatMap[key].push(c);
   });
 
-  // Update each cell
+  // Update each cell (col-sep cells have no data-col, skipped automatically)
   for (let r = 1; r <= maxRow; r++) {
     for (let co = 1; co <= maxCol; co++) {
       const key = r + '-' + co;
       const cell = grid.querySelector(`td[data-row="${r}"][data-col="${co}"]`);
       if (!cell) continue;
       const entries = seatMap[key] || [];
-      // Clear previous data
       delete cell.dataset.checkinId;
       delete cell.dataset.studentId;
       delete cell.dataset.studentName;
@@ -52,7 +51,6 @@ function rebuildGrid(checkins) {
         cell.className = 'seat-taken';
         cell.textContent = entries[0].name;
         cell.title = `${r}行${co}列 - ${entries[0].student_id} ${entries[0].name}`;
-        // Store checkin info for right-click reset
         cell.dataset.checkinId = entries[0].id;
         cell.dataset.studentId = entries[0].student_id;
         cell.dataset.studentName = entries[0].name;

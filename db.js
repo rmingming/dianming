@@ -76,6 +76,9 @@ async function init() {
     )
   `);
 
+  // Migrations: add columns that may not exist in older databases
+  try { db.run('ALTER TABLE courses ADD COLUMN col_groups TEXT DEFAULT NULL'); } catch(e) { /* already exists */ }
+
   // Create indexes
   db.run(`CREATE INDEX IF NOT EXISTS idx_checkins_course ON checkins(course_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_checkins_active ON checkins(course_id, student_id) WHERE reset_at IS NULL`);

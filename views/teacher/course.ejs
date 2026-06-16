@@ -90,6 +90,7 @@
             <th class="corner"></th>
             <% for (let c = 1; c <= course.max_col; c++) { %>
               <th>列<%= c %></th>
+              <% if (colGroupEnds.includes(c)) { %><th class="col-sep"></th><% } %>
             <% } %>
           </tr>
         </thead>
@@ -118,12 +119,14 @@
                   data-student-name="<%= seatCheckins.length === 1 ? seatCheckins[0].name : '' %>">
                 <%= content %>
               </td>
+              <% if (colGroupEnds.includes(c)) { %><td class="col-sep"></td><% } %>
             <% } %>
           </tr>
           <% } %>
         </tbody>
       </table>
     </div>
+    <div class="podium">讲 台</div>
     <% if (conflictSeats.length > 0) { %>
       <div class="conflict-alert">
         ⚠️ 检测到 <strong><%= conflictSeats.length %></strong> 个座位冲突：

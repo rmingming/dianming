@@ -352,6 +352,25 @@ a:hover { text-decoration: underline; }
   padding-bottom: 8px;
 }
 
+/* Podium — centered below the grid */
+.podium {
+  margin: 12px auto 0;
+  max-width: 300px;
+  width: 60%;
+  min-width: 120px;
+  height: 40px;
+  line-height: 40px;
+  text-align: center;
+  background: #f1f5f9;
+  border: 2px solid #cbd5e1;
+  border-radius: 6px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 8px;
+  user-select: none;
+}
+
 .seat-grid {
   border-collapse: collapse;
   font-size: 12px;
@@ -368,6 +387,15 @@ a:hover { text-decoration: underline; }
 }
 
 .seat-grid th.corner { min-width: 40px; }
+
+/* Column group separator — an empty gap column between groups */
+.seat-grid .col-sep {
+  width: 42px;
+  min-width: 42px;
+  background: transparent;
+  border: none !important;
+  padding: 0;
+}
 
 .seat-grid td {
   min-width: 42px;

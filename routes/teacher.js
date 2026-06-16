@@ -148,11 +148,25 @@ router.get('/course/:id', requireAuth, (req, res) => {
 
   const conflictSeats = findConflicts(checkins);
 
+  // Parse column groups for visual separators
+  let colGroupEnds = [];
+  if (course.col_groups) {
+    try {
+      const groups = JSON.parse(course.col_groups);
+      let sum = 0;
+      for (let i = 0; i < groups.length - 1; i++) {
+        sum += groups[i];
+        colGroupEnds.push(sum);
+      }
+    } catch(e) { /* ignore */ }
+  }
+
   res.render('teacher/course', {
     course,
     checkins,
     totalStudents: totalStudents ? totalStudents.count : 0,
     conflictSeats,
+    colGroupEnds,
   });
 });
 
@@ -469,8 +483,22 @@ router.put('/course/:id', requireAuth, (req, res) => {
     return res.status(400).json({ error: '行数和列数必须在 1-20 之间' });
   }
 
-  db.run('UPDATE courses SET name = ?, max_row = ?, max_col = ? WHERE id = ?',
-    [name || course.name, row, col, course.id]);
+  // Parse and validate column groups
+  let colGroups = req.body.colGroups || null;
+  if (colGroups) {
+    // Accept comma-separated numbers like "3,4,3"
+    const parts = colGroups.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+    const sum = parts.reduce((a, b) => a + b, 0);
+    if (sum !== col) {
+      return res.status(400).json({ error: `列分组数字之和（${sum}）必须等于最大列数（${col}）` });
+    }
+    colGroups = JSON.stringify(parts);
+  } else {
+    colGroups = null;
+  }
+
+  db.run('UPDATE courses SET name = ?, max_row = ?, max_col = ?, col_groups = ? WHERE id = ?',
+    [name || course.name, row, col, colGroups, course.id]);
 
   // Update student list if provided
   if (studentList !== undefined) {
