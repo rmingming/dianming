@@ -116,12 +116,7 @@ function highlightCell(row, col) {
   const cell = grid.querySelector(`td[data-row="${row}"][data-col="${col}"]`);
   if (cell) {
     if (!cell.dataset.origClass) {
-      // Save base class only — strip selection classes to avoid stale blue on restore
-      cell.dataset.origClass = cell.className
-        .replace(/\bseat-selected\b/g, '')
-        .replace(/\bseat-selecting\b/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+      cell.dataset.origClass = cell.className;
     }
     cell.classList.add('seat-picking');
     prevCell = cell;
@@ -248,6 +243,7 @@ function clearAllSelectionClasses() {
   if (!grid) return;
   grid.querySelectorAll('td[data-row][data-col]').forEach(function(cell) {
     cell.classList.remove('seat-selecting', 'seat-selected');
+    delete cell.dataset.origClass;  // force re-save on next highlightCell visit
   });
 }
 

@@ -27,6 +27,16 @@ function togglePick() {
 }
 
 async function startPick() {
+  // Clear any seat-picked from previous pick sessions
+  var grid = document.getElementById('seatGrid');
+  if (grid) {
+    grid.querySelectorAll('td[data-row][data-col]').forEach(function(c) {
+      c.classList.remove('seat-picked');
+      delete c.dataset.origClass;
+    });
+    prevCell = null;
+  }
+
   // Fetch current checkins
   let checkins = [];
   try {
@@ -145,6 +155,7 @@ function confirmPick() {
   pickState = 'idle';
   document.getElementById('btnPick').classList.remove('running');
   document.getElementById('btnPick').textContent = '🎲 随机点名';
+  // Keep seat-picked visible on grid — marks who was picked
   resetSelectionToFullGrid();
 }
 
@@ -177,6 +188,7 @@ function resetSelectionToFullGrid() {
   if (grid) {
     grid.querySelectorAll('td.seat-selecting, td.seat-selected').forEach(function(c) {
       c.classList.remove('seat-selecting', 'seat-selected');
+      delete c.dataset.origClass;  // force re-save on next pick
     });
   }
   // Disable reset-seat button
