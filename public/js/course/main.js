@@ -19,8 +19,8 @@ function switchView(view) {
   const origSwitchView = switchView;
   switchView = function(view) {
     if (view === 'list') {
-      if (pickState === 'running') stopPick();
-      if (selectionRect) clearSelection();
+      if (typeof pickState !== 'undefined' && pickState === 'running' && typeof stopPick === 'function') stopPick();
+      if (typeof selectionRect !== 'undefined' && selectionRect && typeof clearSelection === 'function') clearSelection();
     }
     origSwitchView(view);
   };

@@ -49,10 +49,11 @@ function selectStudent(sid, name) {
   if (row) row.style.background = '#dbeafe';
 }
 
-function clearSelection() {
+function clearManualSelection() {
   selectedManualStudent = null;
-  document.getElementById('selectedStudent').style.display = 'none';
-  document.querySelectorAll('#absentListContainer tbody tr').forEach(r => r.style.background = '');
+  var el = document.getElementById('selectedStudent');
+  if (el) el.style.display = 'none';
+  document.querySelectorAll('#absentListContainer tbody tr').forEach(function(r) { r.style.background = ''; });
 }
 
 async function manualCheckin(e) {
@@ -91,7 +92,7 @@ async function manualCheckin(e) {
       document.getElementById('absentListContainer').innerHTML = '<p style="text-align:center;color:var(--color-text-secondary);padding:20px;">✅ 所有学生已签到完毕</p>';
     }
     // Clear selection
-    clearSelection();
+    clearManualSelection();
     // Reset form
     document.getElementById('manualRow').value = '';
     document.getElementById('manualCol').value = '';
